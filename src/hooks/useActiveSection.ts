@@ -1,22 +1,32 @@
 import { useEffect, useState } from 'react'
 
-/** Tracks which section id is currently crossing the upper third of the viewport. */
-export function useActiveSection(ids: string[]) {
-  const [active, setActive] = useState(ids[0])
-
+/** Returns the id of the section currently crossing the upper-middle of the viewport. */
+export function useActiveSection(ids: string[], enabled: boolean) {
+  const [active, setActive] = useState('')
+  const key = ids.join('|')
   useEffect(() => {
+    if (!enabled) {
+      setActive('')
+      return
+    }
     const els = ids.map((id) => document.getElementById(id)).filter((e): e is HTMLElement => !!e)
-    const obs = new IntersectionObserver(
+    if (!els.length) return
+    const io = new IntersectionObserver(
       (entries) => {
         entries.forEach((e) => {
           if (e.isIntersecting) setActive(e.target.id)
         })
       },
-      { rootMargin: '-35% 0px -55% 0px', threshold: 0 },
+      { rootMargin: '-35% 0px -55% 0px' },
     )
-    els.forEach((el) => obs.observe(el))
-    return () => obs.disconnect()
-  }, [ids])
-
+    els.forEach((el) => io.observe(el))
+    const onTop = () => window.scrollY < 200 && setActive('')
+    window.addEventListener('scroll', onTop, { passive: true })
+    return () => {
+      io.disconnect()
+      window.removeEventListener('scroll', onTop)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, enabled])
   return active
 }
